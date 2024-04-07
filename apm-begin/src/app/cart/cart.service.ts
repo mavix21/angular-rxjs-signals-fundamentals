@@ -6,7 +6,7 @@ import { Product } from '../products/product';
   providedIn: 'root',
 })
 export class CartService {
-  // !<----- Signals ----->
+  // ! <----- Signals ----->
   public readonly cartItems = signal<CartItem[]>([]);
   public readonly cartCount = computed(() =>
     this.cartItems().reduce((accQty, item) => accQty + item.quantity, 0)
@@ -27,12 +27,38 @@ export class CartService {
     () => this.subTotal() + this.deliveryFee() + this.tax()
   );
 
-  // *<---- Methods ----->
+  // * <---- Methods ----->
   public addToCart(product: Product): void {
-    this.cartItems.update((currentItems) => [
-      ...currentItems,
-      { product, quantity: 1 },
-    ]);
+    const index = this.cartItems().findIndex(
+      (item) => item.product.id === product.id
+    );
+
+    if (index === -1) {
+      // * Not already in the cart, so add with default quantity of 1
+      this.cartItems.update((items) => [...items, { product, quantity: 1 }]);
+    } else {
+      // * Already in the cart, so increase the quantity by 1
+      this.cartItems.update((items) => [
+        ...items.slice(0, index),
+        { ...items[index], quantity: items[index].quantity + 1 },
+        ...items.slice(index + 1),
+      ]);
+    }
+    // this.cartItems.update((currentItems) => {
+    //   if (currentItems.length === 0) {
+    //     return [{ product, quantity: 1 }];
+    //   }
+
+    //   if (currentItems.find((item) => item.product.id === product.id)) {
+    //     return currentItems.map((item) =>
+    //       item.product.id === product.id
+    //         ? { ...item, quantity: item.quantity + 1 }
+    //         : item
+    //     );
+    //   }
+
+    //   return [...currentItems, { product, quantity: 1 }];
+    // });
   }
 
   public removeFromCart(cartItem: CartItem): void {
