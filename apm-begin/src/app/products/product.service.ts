@@ -23,6 +23,7 @@ import { Review } from '../reviews/review';
   providedIn: 'root',
 })
 export class ProductService {
+  // * Dependencies injection
   private http = inject(HttpClient);
   private errorService = inject(HttpErrorService);
   private reviewService = inject(ReviewService);
@@ -66,7 +67,7 @@ export class ProductService {
   //   }
   // });
 
-  readonly #productResult$ = toObservable(this.selectedProductId).pipe(
+  readonly #productResult1$ = toObservable(this.selectedProductId).pipe(
     filter(Boolean),
     switchMap((productId) => {
       const productUrl = this.productsUrl + '/' + productId;
@@ -82,6 +83,31 @@ export class ProductService {
     }),
     map((p) => ({ data: p } as ServiceResult<Product>))
   );
+
+  private readonly foundProduct = computed(() => {
+    // Dependant signals
+    const products = this.products();
+    const selectedProductId = this.selectedProductId();
+
+    if (products && selectedProductId) {
+      return products.find((product) => product.id === selectedProductId);
+    }
+
+    return undefined;
+  });
+
+  readonly #productResult$ = toObservable(this.foundProduct).pipe(
+    filter(Boolean),
+    switchMap((product) => this.getProductWithReviews(product)),
+    map((product) => ({ data: product } as ServiceResult<Product>)),
+    catchError((err) =>
+      of({
+        data: undefined,
+        error: this.errorService.formatError(err),
+      } as ServiceResult<Product>)
+    )
+  );
+
   readonly #productResult = toSignal(this.#productResult$);
   public productResult = computed(() => this.#productResult()?.data);
   public productError = computed(() => this.#productResult()?.error);
@@ -97,7 +123,6 @@ export class ProductService {
   //   switchMap((product) => this.getProductWithReviews(product)),
   //   catchError((err) => this.handleError(err))
   // );
-
   public productSelected(selectedProductId: number): void {
     // this.#productSelectedSubject.next(selectedProductId);
     this.selectedProductId.set(selectedProductId);
